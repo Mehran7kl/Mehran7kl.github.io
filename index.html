@@ -1,19 +1,149 @@
 <!DOCTYPE html>
 <html>
-	<head>
-	<meta charset="UTF-8" >
-	<meta name="viewport" content="width=device-width,initial-scale=1.0, user-scalable=yes">
-	<title>practice</title>
+    <head>
+    <meta charset="UTF-8" >
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>graph</title>
+    <style>
+	html, body {overflow-x:hidden;} 
+body{
+	margin:0;
+	background-image:url(bg.jpg) ;
+	background-size:contain;
+	color:red;
+	overflow-x:hidden;
+} 
+canvas{
+	backdrop-filter:blur(8px);
 	
-<style>
-	
+	width:100vw;
+	height:100vw;
+} 
+main{
+	display:none;
+} 
+@keyframes drop{
+	from{
+		transform: translate(0%,50%) scale(2) rotate(90deg);
+	} 
+	to{
+		transform:scale(1) rotate(0deg) ;
+	} 
+} 
+fieldset{
+	backdrop-filter:blur(2px);
+} 
+input{
+	display:block;
+} 
+footer{
+	text-align:center;
+	font-size:0.5em;
+} 
 </style>
 </head>
 <body>
-4 it is ready! 	
-<script src="index.js">
-"use strict" ;
- 
+
+<div id="net">waiting for image</div>
+<main id="main" >
+<noscript>JavaScript required</noscript>
+<canvas id="cv"></canvas>
+<fieldset>
+<legend>
+    Inputs
+</legend>
+
+<input name="range"type="range" min=1 max=20 value=5 list="tickmarks"id="range" oninput="stateChanged=true"/>
+<label for="range">Dx</label>
+<input id="func"value="x**3"oninput="stateChanged=true" />
+<label for="func">f(x)</label>
+
+</fieldset>
+<datalist id="tickmarks" >
+    <option value="1" label="1"></option>
+    <option value="10" label="10"></option>
+    <option value="20" label="20"></option>
+</datalist>
+<footer>Implemented by Mehran Raeisi</footer>
+</main>
+<script>
+"use strict";
+onoffline=e=>document.body.innerHTML="internet connection required";
+onload=e=>{
+cv.style.animation="drop 2s";
+main.style.display="block";
+net.style.display="none";
+
+
+} 
+var stateChanged=true;
+cv.width=innerWidth;
+cv.height=innerWidth;
+const gr=cv.getContext("2d");
+function draw() {
+    if(stateChanged) {
+    gr.strokeStyle="yellow"; 
+    gr.clearRect(0,0,innerWidth,innerWidth);
+    gr.beginPath();
+    gr.moveTo(0,innerWidth/2);
+    gr.lineTo(innerWidth,innerWidth/2);
+    gr.moveTo(innerWidth/2,0);
+    gr.lineTo(innerWidth/2,innerWidth);
+    gr.stroke() ;
+    gr.beginPath();
+    
+    var img=gr.getImageData(0,0,innerWidth,innerWidth);
+    var i= +range.value;
+    
+    var g=i/innerWidth;
+    for(var x=-i;x<i;x+=g){
+        
+        setPixel(conX(x),conY(f(x)), img.data);
+    } 
+    gr.putImageData(img,0,0);
+    gr.fillStyle="red";
+    var next=i/4;
+    for(var it=0;it<i;it+=next){
+        gr.fillText(it,conX(it),conY(0));
+        gr.fillText(-it,conX(-it),conY(0));
+        gr.fillText(it,conX(0),conY(it));
+        gr.fillText(-it,conX(0),conY(-it));
+    }
+    stateChanged=false;
+    } 
+    requestAnimationFrame(draw);
+}
+function f(x) {
+    try{
+    var e=eval(func.value);
+    func.style.outlineColor="initial";
+    return e;
+    } catch(e) {func.style.outlineColor="red"} 
+} 
+function conX(x) {
+    var i = +range.value;
+    var a= innerWidth/(2*i);
+    var b=innerWidth/2;
+    x=a*x+b;
+    return x; 
+} 
+function conY(y) {
+    var i = +range.value;
+    var a= -(innerWidth/(2*i));
+    var b= innerWidth/2;
+    y=a*y+b;
+    return y;
+} 
+draw() 
+function setPixel(x, y, data){
+    x=Math.floor(x);
+    y=Math.floor(y);
+    var i=4*(y*innerWidth+x);
+    data[i]=100;
+    data[++i]=100;
+    data[++i]=255;
+    data[++i]=255;
+} 
 </script>
 </body> 
-</html> 
+</html>
