@@ -5,17 +5,19 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>graph</title>
     <style>
-	html, body {overflow-x:hidden;} 
+html, body {overflow-x:hidden;} 
 body{
 	margin:0;
-	background-image:url(https://www.dropbox.com/s/v7ub4nloxeflvdh/graph.jpg?raw=1) ;
+	background-image:url(bg.jpg) ;
 	background-size:contain;
 	color:red;
-	overflow-x:hidden;
 } 
-canvas{
+.deg{
+	position:absolute;
+} 
+#cv{
 	backdrop-filter:blur(8px);
-	
+	position:relative;
 	width:100vw;
 	height:100vw;
 } 
@@ -27,7 +29,7 @@ main{
 		transform: translate(0%,50%) scale(2) rotate(90deg);
 	} 
 	to{
-		transform:scale(1) rotate(0deg) ;
+		transform:scale(1) rotate(0deg);
 	} 
 } 
 fieldset{
@@ -40,6 +42,9 @@ footer{
 	text-align:center;
 	font-size:0.5em;
 } 
+#dxtext{
+	float:right;
+} 
 </style>
 </head>
 <body>
@@ -47,12 +52,15 @@ footer{
 <div id="net">waiting for image</div>
 <main id="main" >
 <noscript>JavaScript required</noscript>
+
+
 <canvas id="cv"></canvas>
+
 <fieldset>
 <legend>
     Inputs
 </legend>
-
+<span id="dxtext">(-5,5)</span>
 <input name="range"type="range" min=1 max=20 value=5 list="tickmarks"id="range" oninput="stateChanged=true"/>
 <label for="range">Dx</label>
 <input id="func"value="x**3"oninput="stateChanged=true" />
@@ -73,77 +81,118 @@ onload=e=>{
 cv.style.animation="drop 2s";
 main.style.display="block";
 net.style.display="none";
+}
+var test;
+function loadShader(gl,program , type, src){
+var shader=gl.createShader(type);
+gl.shaderSource(shader,src);
+gl.compileShader(shader);
 
-
+var compiled=gl.getShaderParameter(shader, gl.COMPILE_STATUS );
+if(! compiled) {
+	console.warn(" shader compiled successfully: " +compiled) ;
+	var compilationLog=gl.getShaderInfoLog(shader) ;
+	throw("GLSL compiler log: " +compilationLog) ;
+   } 
+   gl.attachShader(program, shader);
 } 
 var stateChanged=true;
+//configuration 
 cv.width=innerWidth;
 cv.height=innerWidth;
-const gr=cv.getContext("2d");
-function draw() {
-    if(stateChanged) {
-    gr.strokeStyle="yellow"; 
-    gr.clearRect(0,0,innerWidth,innerWidth);
-    gr.beginPath();
-    gr.moveTo(0,innerWidth/2);
-    gr.lineTo(innerWidth,innerWidth/2);
-    gr.moveTo(innerWidth/2,0);
-    gr.lineTo(innerWidth/2,innerWidth);
-    gr.stroke() ;
-    gr.beginPath();
-    
-    var img=gr.getImageData(0,0,innerWidth,innerWidth);
+const gl=cv.getContext("webgl");
+gl.viewport(0,0,innerWidth, innerWidth);
+gl.clearColor(0,0,0,1);
+
+//shaders
+const fgCode = `
+precision mediump float;
+
+uniform vec4 color;
+void main() {
+gl_FragColor = vec4(color.rgb, 1);
+}`;
+
+const vertCode = `
+uniform vec2 vertex;
+uniform vec2 dx;
+
+void main() {
+gl_PointSize=1.0;
+gl_Position = vec4(vertex,dx);
+} 
+`;
+const vertCode2 = `
+attribute vec2 vertex;
+
+void main() {
+gl_PointSize=2.0;
+gl_Position = vec4(vertex,0,1);
+} 
+`;
+//shader program for drawing graph
+const shaderProgram=gl.createProgram();
+loadShader(gl, shaderProgram,gl.VERTEX_SHADER,vertCode);
+loadShader(gl, shaderProgram,gl.FRAGMENT_SHADER,fgCode);
+gl.linkProgram(shaderProgram) 
+//shader program for drawing lines
+const shaderProgram2=gl.createProgram();
+loadShader(gl, shaderProgram2,gl.VERTEX_SHADER,vertCode2);
+loadShader(gl, shaderProgram2,gl.FRAGMENT_SHADER,fgCode);
+gl.linkProgram(shaderProgram2) ;
+//binding data to it
+const vertexBuffer=gl.createBuffer()
+var verts=[0,-1, 0,1, -1,0, 1,0, 0.25,0,  0.5,0,  0.75,0,  -0.25,0,  -0.5,0 ,-0.75,0,  0,0.25,  0,0.5,  0,0.75, 0, -0.25, 0, -0.5  ,0,-0.75] ;
+gl.bindBuffer(gl.ARRAY_BUFFER,vertexBuffer);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(verts) ,gl.STATIC_DRAW);
+const position=gl.getAttribLocation(shaderProgram2, "vertex");
+gl.vertexAttribPointer(position, 2, gl.FLOAT,false, 0,0);
+gl.enableVertexAttribArray(position);
+
+//getting uniform vars
+var vertex=gl.getUniformLocation(shaderProgram,"vertex");
+var dx=gl.getUniformLocation(shaderProgram,"dx");
+var color=gl.getUniformLocation(shaderProgram, "color") ;
+var color2=gl.getUniformLocation(shaderProgram2, "color") ;
+
+//setting colors;
+
+
+function draw(){
+    if(stateChanged){
+    	
+   //drawing lines
+	gl.useProgram(shaderProgram2);
+	gl.uniform4fv(color2,[0.4,0.5,1.0,1.0]);
+	gl.drawArrays(gl.LINES,0,4);
+	gl.uniform4fv(color2,[1,0,0,1]);
+	gl.drawArrays(gl.POINTS, 4,12);
+	gl.useProgram(shaderProgram);
+	gl.uniform4fv(color,[0,1.0,0.0,1.0]);
     var i= +range.value;
+    var g=i/innerWidth/4;
+    dxtext.innerHTML=`(${-i},${i})`;
     
-    var g=i/innerWidth;
+    gl.uniform2fv(dx,[0,i]);
     for(var x=-i;x<i;x+=g){
-        
-        setPixel(conX(x),conY(f(x)), img.data);
-    } 
-    gr.putImageData(img,0,0);
-    gr.fillStyle="red";
-    var next=i/4;
-    for(var it=0;it<i;it+=next){
-        gr.fillText(it,conX(it),conY(0));
-        gr.fillText(-it,conX(-it),conY(0));
-        gr.fillText(it,conX(0),conY(it));
-        gr.fillText(-it,conX(0),conY(-it));
-    }
+      		gl.uniform2fv(vertex, [x ,f(x)]);
+      		gl.drawArrays(gl.POINTS, 0,1);
+		}
     stateChanged=false;
-    } 
-    requestAnimationFrame(draw);
+    
+    }
+   requestAnimationFrame(draw);
+  
 }
 function f(x) {
     try{
     var e=eval(func.value);
     func.style.outlineColor="initial";
     return e;
-    } catch(e) {func.style.outlineColor="red"} 
-} 
-function conX(x) {
-    var i = +range.value;
-    var a= innerWidth/(2*i);
-    var b=innerWidth/2;
-    x=a*x+b;
-    return x; 
-} 
-function conY(y) {
-    var i = +range.value;
-    var a= -(innerWidth/(2*i));
-    var b= innerWidth/2;
-    y=a*y+b;
-    return y;
+    } catch(e) {func.style.outlineColor="red";} 
 } 
 draw() 
-function setPixel(x, y, data){
-    x=Math.floor(x);
-    y=Math.floor(y);
-    var i=4*(y*innerWidth+x);
-    data[i]=100;
-    data[++i]=100;
-    data[++i]=255;
-    data[++i]=255;
-} 
+
 </script>
 </body> 
 </html>
