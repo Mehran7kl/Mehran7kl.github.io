@@ -168,7 +168,7 @@ function draw(){
 	gl.uniform4fv(color2,[1,0,0,1]);
 	gl.drawArrays(gl.POINTS, 4,12);
 	gl.useProgram(shaderProgram);
-	gl.uniform4fv(color,[0,1.0,0.0,1.0]);
+	gl.uniform4fv(color,[1,1.0,0.0,1.0]);
     var i= +range.value;
     var g=i/innerWidth/4;
     dxtext.innerHTML=`(${-i},${i})`;
